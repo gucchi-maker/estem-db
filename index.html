@@ -5,35 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ESTEM 施策データベース</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --font-sans: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
       --radius: 8px;
-      --border: #E5E7EB;
-      --border-strong: #D1D5DB;
-      --border-accent: #6366F1;
-      --border-danger: #FCA5A5;
-      --surface-0: #F9FAFB;
-      --surface-1: #F3F4F6;
-      --surface-2: #FFFFFF;
-      --text-primary: #111827;
-      --text-secondary: #6B7280;
-      --text-muted: #9CA3AF;
-      --text-accent: #4F46E5;
-      --text-success: #059669;
-      --text-warning: #D97706;
-      --text-danger: #DC2626;
-      --fill-accent: #6366F1;
-      --fill-accent-hover: #4F46E5;
-      --on-accent: #FFFFFF;
-      --bg-accent: #EEF2FF;
-      --bg-success: #D1FAE5;
-      --bg-warning: #FEF3C7;
-      --bg-danger: #FEE2E2;
+      --border: #E5E7EB; --border-strong: #D1D5DB; --border-accent: #6366F1; --border-danger: #FCA5A5;
+      --surface-0: #F9FAFB; --surface-1: #F3F4F6; --surface-2: #FFFFFF;
+      --text-primary: #111827; --text-secondary: #6B7280; --text-muted: #9CA3AF;
+      --text-accent: #4F46E5; --text-success: #059669; --text-warning: #D97706; --text-danger: #DC2626;
+      --fill-accent: #6366F1; --fill-accent-hover: #4F46E5; --on-accent: #FFFFFF;
+      --bg-accent: #EEF2FF; --bg-success: #D1FAE5; --bg-warning: #FEF3C7; --bg-danger: #FEE2E2;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: var(--font-sans); font-size: 14px; color: var(--text-primary); background: var(--surface-0); }
-    .app { display: flex; height: 100vh; min-height: 600px; }
+    .app { display: flex; height: 100vh; }
     .sidebar { width: 220px; flex-shrink: 0; background: var(--surface-1); border-right: 0.5px solid var(--border); display: flex; flex-direction: column; padding: 16px 0; }
     .sidebar-logo { padding: 0 16px 14px; border-bottom: 0.5px solid var(--border); margin-bottom: 8px; }
     .sidebar-logo h1 { font-size: 15px; font-weight: 500; }
@@ -43,14 +29,11 @@
     .nav-item:hover { background: var(--surface-2); color: var(--text-primary); }
     .nav-item.active { background: var(--bg-accent); color: var(--text-accent); font-weight: 500; }
     .nav-item i { font-size: 16px; }
-    .sync-status { margin: 8px 16px 0; padding: 7px 10px; border-radius: var(--radius); font-size: 11px; display: flex; align-items: center; gap: 6px; }
+    .sync-bar { margin: 8px 16px 0; padding: 7px 10px; border-radius: var(--radius); font-size: 11px; display: flex; align-items: center; gap: 6px; }
     .sync-ok { background: var(--bg-success); color: var(--text-success); }
     .sync-off { background: var(--surface-0); color: var(--text-muted); border: 0.5px solid var(--border); }
-    .sync-loading { background: var(--bg-warning); color: var(--text-warning); }
+    .sync-ing { background: var(--bg-warning); color: var(--text-warning); }
     .sync-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-    .dot-ok { background: var(--text-success); }
-    .dot-off { background: var(--text-muted); }
-    .dot-loading { background: var(--text-warning); }
     .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     .topbar { padding: 10px 14px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; gap: 8px; background: var(--surface-2); flex-wrap: wrap; }
     .topbar input[type=text] { flex: 1; min-width: 120px; padding: 7px 10px; border: 0.5px solid var(--border); border-radius: var(--radius); font-size: 13px; background: var(--surface-2); color: var(--text-primary); }
@@ -92,7 +75,6 @@
     .modal-header { padding: 14px 18px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
     .modal-title { font-size: 15px; font-weight: 500; }
     .modal-close { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 20px; padding: 0; }
-    .modal-close:hover { color: var(--text-primary); }
     .modal-body { padding: 18px; }
     .form-group { margin-bottom: 12px; }
     .form-label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 4px; }
@@ -103,28 +85,29 @@
     .modal-footer { padding: 10px 18px; border-top: 0.5px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
     .toast { position: fixed; bottom: 20px; right: 20px; background: var(--fill-accent); color: var(--on-accent); padding: 10px 16px; border-radius: var(--radius); font-size: 13px; z-index: 200; display: flex; align-items: center; gap: 8px; opacity: 0; transition: opacity .2s; pointer-events: none; }
     .toast.show { opacity: 1; }
-    .info-box { background: var(--bg-accent); border: 0.5px solid var(--border-accent); border-radius: var(--radius); padding: 10px 14px; font-size: 12px; color: var(--text-accent); margin-bottom: 14px; display: flex; align-items: flex-start; gap: 8px; line-height: 1.6; }
-    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+    .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 14px; }
     .stat-card { background: var(--surface-1); border-radius: var(--radius); padding: 12px 14px; }
     .stat-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
     .stat-value { font-size: 22px; font-weight: 500; }
     .export-section { background: var(--surface-1); border-radius: 12px; padding: 18px; margin-bottom: 14px; }
-    .export-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .export-options { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
     .export-card { background: var(--surface-2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 12px; text-align: center; }
     .export-card i { font-size: 22px; color: var(--text-accent); display: block; margin-bottom: 6px; }
     .export-card-title { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
     .export-card-desc { font-size: 11px; color: var(--text-muted); line-height: 1.5; margin-bottom: 10px; }
+    .realtime-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 2px 8px; border-radius: 99px; background: var(--bg-success); color: var(--text-success); margin-left: 8px; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .pulse { animation: pulse 1.5s infinite; }
   </style>
 </head>
 <body>
-
 <div class="app">
   <div class="sidebar">
     <div class="sidebar-logo">
-      <h1>ESTEM DB</h1>
+      <h1>ESTEM DB <span class="realtime-badge"><i class="ti ti-bolt"></i>リアルタイム</span></h1>
       <p>施策ナレッジ管理</p>
     </div>
-    <div id="syncStatus" class="sync-status sync-off"><div class="sync-dot dot-off"></div><span>ローカル保存</span></div>
+    <div id="syncBar" class="sync-bar sync-off"><div class="sync-dot" id="syncDot"></div><span id="syncText">接続中...</span></div>
     <div class="nav-section">メニュー</div>
     <div class="nav-item active" onclick="showView('list')"><i class="ti ti-layout-list"></i>施策一覧</div>
     <div class="nav-item" onclick="showView('logs')"><i class="ti ti-message-circle"></i>振り返りログ</div>
@@ -135,10 +118,9 @@
     <div style="flex:1"></div>
     <div style="padding:10px 16px;border-top:0.5px solid var(--border)">
       <div style="font-size:11px;color:var(--text-muted)" id="userLabel">ユーザー未設定</div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:2px" id="lastSyncLabel"></div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px" id="onlineLabel"></div>
     </div>
   </div>
-
   <div class="main">
     <div class="topbar">
       <input type="text" id="searchInput" placeholder="施策名・内容で検索..." oninput="render()">
@@ -157,83 +139,106 @@
         <option value="授業連動">授業連動</option>
         <option value="その他">その他</option>
       </select>
+      <button class="btn" onclick="loadAll()" title="最新データを取得"><i class="ti ti-refresh"></i></button>
       <button class="btn btn-primary" id="addBtn" onclick="handleAddBtn()"><i class="ti ti-plus"></i><span id="addBtnLabel">施策を追加</span></button>
     </div>
-    <div class="content" id="mainContent"></div>
+    <div class="content" id="mainContent"><div class="empty"><i class="ti ti-loader pulse"></i><p>データを読み込み中...</p></div></div>
   </div>
 </div>
 
 <div class="modal-bg" id="modalBg" style="display:none" onclick="if(event.target===this)closeModal()">
   <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title" id="modalTitle"></div>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
+    <div class="modal-header"><div class="modal-title" id="modalTitle"></div><button class="modal-close" onclick="closeModal()">×</button></div>
     <div class="modal-body" id="modalBody"></div>
     <div class="modal-footer" id="modalFooter"></div>
   </div>
 </div>
-
 <div class="toast" id="toast"><i class="ti ti-check"></i><span id="toastMsg"></span></div>
 
 <script>
+// ===== Supabase設定 =====
+const SUPABASE_URL = 'https://upeglyuljasnypdjssne.supabase.co'
+const SUPABASE_KEY = 'sb_publishable_K2T6xKSXnqXmeEO5OxDMNg_2-uD1SF0'
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+
+// ===== 定数 =====
 const CATS = ['交流促進','習慣化','環境整備','授業連動','その他']
 const STATUSES = ['検討中','実施中','完了','中止']
 const LOG_TYPES = ['良かった点','課題点','子どもの反応','今後の対応']
 const STATUS_BADGE = {実施中:'badge-teal',検討中:'badge-accent',完了:'badge-gray',中止:'badge-red'}
 
-let data = {施策:[], logs:[]}
+// ===== 状態 =====
+let 施策List = []
+let logList = []
 let expanded = {}
 let currentView = 'list'
-let userName = ''
+let userName = localStorage.getItem('estem_user') || ''
 
-function localSave() {
-  try { localStorage.setItem('estem_gh', JSON.stringify({data, userName})) } catch(e) {}
+// ===== 同期ステータス表示 =====
+function setSyncStatus(s) {
+  const bar = document.getElementById('syncBar')
+  const dot = document.getElementById('syncDot')
+  const txt = document.getElementById('syncText')
+  bar.className = 'sync-bar'
+  if (s === 'ok') { bar.classList.add('sync-ok'); dot.style.background='var(--text-success)'; txt.textContent='リアルタイム同期中' }
+  else if (s === 'ing') { bar.classList.add('sync-ing'); dot.style.background='var(--text-warning)'; txt.textContent='接続中...' }
+  else { bar.classList.add('sync-off'); dot.style.background='var(--text-muted)'; txt.textContent='オフライン' }
 }
-function localLoad() {
+
+// ===== データ読み込み =====
+async function loadAll() {
+  setSyncStatus('ing')
   try {
-    const d = localStorage.getItem('estem_gh')
-    if (d) { const p = JSON.parse(d); data = p.data || {施策:[], logs:[]}; userName = p.userName || '' }
-  } catch(e) {}
-  if (!data.施策 || !data.logs) data = {施策:[], logs:[]}
-  if (data.施策.length === 0) seed()
+    const [{ data: s }, { data: l }] = await Promise.all([
+      sb.from('施策').select('*').order('created_at', { ascending: false }),
+      sb.from('logs').select('*').order('date', { ascending: false })
+    ])
+    施策List = s || []
+    logList = l || []
+    setSyncStatus('ok')
+    render()
+  } catch(e) {
+    setSyncStatus('off')
+    showToast('データの読み込みに失敗しました')
+  }
 }
 
-function seed() {
-  const now = Date.now()
-  data.施策 = [
-    {id:'s1', name:'今日の一言ボード', cat:'習慣化', status:'実施中', start:'2025-06-01', end:'', target:'自習室全員', author:'山田', summary:'来室時に今日やることを一言書く習慣をつくる', goal:'小さな目標を持って自習室を使う習慣の定着', created:now},
-    {id:'s2', name:'助けてクエスト', cat:'交流促進', status:'実施中', start:'2025-06-10', end:'', target:'自習室全員', author:'佐藤', summary:'スタッフが困っていることを子どもへの依頼として提示し一緒に解決する', goal:'子ども同士の自然な交流と協力体験を生む', created:now},
-    {id:'s3', name:'空調クエスト（山形校）', cat:'交流促進', status:'完了', start:'2025-05-15', end:'2025-05-30', target:'山形校自習室', author:'田中', summary:'空調の網に落ちた鉛筆を取り出す方法を考えてもらう', goal:'共通の問題を解決する体験による仲間意識の醸成', created:now},
-  ]
-  data.logs = [
-    {id:'l1', 施策id:'s1', type:'良かった点', author:'山田', date:'2025-06-10', body:'来た子が自然とボードに向かうようになった。'},
-    {id:'l2', 施策id:'s1', type:'課題点', author:'佐藤', date:'2025-06-12', body:'書かない子が半数以上いる。ボードの位置が見えにくいかもしれない。'},
-    {id:'l3', 施策id:'s2', type:'子どもの反応', author:'田中', date:'2025-06-11', body:'解決策を思いついた瞬間に他の子に声をかけていた。'},
-    {id:'l4', 施策id:'s3', type:'良かった点', author:'田中', date:'2025-05-28', body:'トリモチ棒のアイデアが出て無事取り出せた。達成感で子どもたちが盛り上がった。'},
-  ]
+// ===== リアルタイム購読 =====
+function subscribeRealtime() {
+  sb.channel('estem-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: '施策' }, () => loadAll())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'logs' }, () => loadAll())
+    .subscribe(status => {
+      if (status === 'SUBSCRIBED') setSyncStatus('ok')
+      else if (status === 'CLOSED') setSyncStatus('off')
+    })
 }
 
+// ===== ユーティリティ =====
+function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+function today() { return new Date().toISOString().slice(0,10) }
+function uid() { return crypto.randomUUID ? crypto.randomUUID() : '_' + Math.random().toString(36).slice(2) }
+function showToast(msg, type='ok') {
+  const t = document.getElementById('toast')
+  t.style.background = type === 'err' ? 'var(--text-danger)' : 'var(--fill-accent)'
+  document.getElementById('toastMsg').textContent = msg
+  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500)
+}
+
+// ===== ビュー切り替え =====
 function updateAddBtn() {
   const label = document.getElementById('addBtnLabel')
   label.textContent = currentView === 'logs' ? 'ログを追加' : '施策を追加'
   document.getElementById('addBtn').style.display = ['list','logs'].includes(currentView) ? 'inline-flex' : 'none'
 }
-
-function handleAddBtn() {
-  if (currentView === 'logs') openLogModal()
-  else openModal('施策')
-}
-
+function handleAddBtn() { currentView === 'logs' ? openLogModal() : openModal('施策') }
 function showView(v) {
   currentView = v
   document.querySelectorAll('.nav-item').forEach((el,i) => {
     el.classList.toggle('active', ['list','logs','stats','export','settings'][i] === v)
   })
-  updateAddBtn()
-  render()
+  updateAddBtn(); render()
 }
-
 function render() {
   if (currentView === 'list') renderList()
   else if (currentView === 'logs') renderLogs()
@@ -241,17 +246,15 @@ function render() {
   else if (currentView === 'export') renderExport()
   else renderSettings()
 }
+function toggle(id) { expanded[id] = !expanded[id]; render() }
 
-function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
-function today() { return new Date().toISOString().slice(0,10) }
-function uid() { return '_' + Math.random().toString(36).slice(2) }
-
+// ===== 施策一覧 =====
 function renderList() {
   const q = document.getElementById('searchInput').value.toLowerCase()
   const st = document.getElementById('filterStatus').value
   const ct = document.getElementById('filterCat').value
-  const list = data.施策.filter(s => {
-    if (q && !s.name.toLowerCase().includes(q) && !s.summary.toLowerCase().includes(q)) return false
+  const list = 施策List.filter(s => {
+    if (q && !s.name.toLowerCase().includes(q) && !(s.summary||'').toLowerCase().includes(q)) return false
     if (st && s.status !== st) return false
     if (ct && s.cat !== ct) return false
     return true
@@ -259,16 +262,18 @@ function renderList() {
   let html = `<div class="list-header"><div>施策名</div><div>分類</div><div>ステータス</div><div>実施期間</div><div style="text-align:center">ログ</div><div></div></div>`
   if (!list.length) html += '<div class="empty"><i class="ti ti-inbox"></i><p>施策が見つかりません</p></div>'
   list.forEach(s => {
-    const logs = data.logs.filter(l => l.施策id === s.id)
+    const logs = logList.filter(l => l['施策id'] === s.id)
     const isExp = expanded[s.id]
     html += `<div class="card${isExp?' expanded':''}" onclick="toggle('${s.id}')">
       <div class="card-row">
         <div class="card-name"><i class="ti ti-chevron-right"></i>${esc(s.name)}</div>
         <div class="card-col"><span class="badge badge-gray">${esc(s.cat)}</span></div>
         <div class="card-col"><span class="badge ${STATUS_BADGE[s.status]||'badge-gray'}">${esc(s.status)}</span></div>
-        <div class="card-col" style="font-size:11px">${esc(s.start)}${s.end?' → '+esc(s.end):' →'}</div>
+        <div class="card-col" style="font-size:11px">${esc(s.start_date||'')}${s.end_date?' → '+esc(s.end_date):' →'}</div>
         <div class="card-col" style="text-align:center">${logs.length}件</div>
-        <div class="card-col" style="text-align:center"><button onclick="event.stopPropagation();confirmDelete施策('${s.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:15px;padding:2px;border-radius:4px;display:flex;align-items:center;justify-content:center" title="削除"><i class="ti ti-trash"></i></button></div>
+        <div class="card-col" style="text-align:center">
+          <button onclick="event.stopPropagation();confirmDelete施策('${s.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:15px;padding:2px" title="削除"><i class="ti ti-trash"></i></button>
+        </div>
       </div>`
     if (isExp) {
       html += `<div style="padding:0 10px 10px;border-top:0.5px solid var(--border);padding-top:10px">
@@ -294,7 +299,10 @@ function renderList() {
             <span class="log-author">${esc(l.author)}</span>
             <span class="log-date">${esc(l.date)}</span>
             <span style="font-size:11px;color:var(--${tc[l.type]||'text-secondary'})">${esc(l.type)}</span>
-            <button onclick="event.stopPropagation();deleteLog('${l.id}')" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0"><i class="ti ti-trash"></i></button>
+            <span style="margin-left:auto;display:flex;gap:6px">
+              <button onclick="event.stopPropagation();editLogModal('${l.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0" title="編集"><i class="ti ti-edit"></i></button>
+              <button onclick="event.stopPropagation();deleteLog('${l.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0" title="削除"><i class="ti ti-trash"></i></button>
+            </span>
           </div>
           <div class="log-body">${esc(l.body)}</div>
         </div>`
@@ -306,30 +314,33 @@ function renderList() {
   document.getElementById('mainContent').innerHTML = html
 }
 
+// ===== 振り返りログ一覧 =====
 function renderLogs() {
   const q = document.getElementById('searchInput').value.toLowerCase()
   const st = document.getElementById('filterStatus').value
   const ct = document.getElementById('filterCat').value
   const tc = {良かった点:'badge-teal',課題点:'badge-red',子どもの反応:'badge-accent',今後の対応:'badge-amber'}
-  const tcc = {良かった点:'text-success',課題点:'text-danger',子どもの反応:'text-accent',今後の対応:'text-warning'}
-  let logs = data.logs.filter(l => {
-    const s = data.施策.find(x => x.id === l.施策id)
+  let logs = logList.filter(l => {
+    const s = 施策List.find(x => x.id === l['施策id'])
     if (q && !l.body.toLowerCase().includes(q) && !l.author.toLowerCase().includes(q) && !(s && s.name.toLowerCase().includes(q))) return false
     if (st || ct) { if (!s) return false; if (st && s.status !== st) return false; if (ct && s.cat !== ct) return false }
     return true
   })
   let html = `<div style="margin-bottom:12px;font-size:13px;color:var(--text-secondary)">振り返りログ（${logs.length}件）</div>`
-  if (!data.施策.length) { html += '<div class="empty"><i class="ti ti-alert-circle"></i><p>先に施策を登録してください</p></div>'; document.getElementById('mainContent').innerHTML = html; return }
+  if (!施策List.length) { html += '<div class="empty"><i class="ti ti-alert-circle"></i><p>先に施策を登録してください</p></div>'; document.getElementById('mainContent').innerHTML = html; return }
   if (!logs.length) html += '<div class="empty"><i class="ti ti-message-off"></i><p>ログが見つかりません</p></div>'
-  logs.slice().reverse().forEach(l => {
-    const s = data.施策.find(x => x.id === l.施策id)
+  logs.forEach(l => {
+    const s = 施策List.find(x => x.id === l['施策id'])
     html += `<div class="log-card">
       <div class="log-card-施策名"><i class="ti ti-folder" style="font-size:11px;margin-right:3px"></i>${s ? esc(s.name) : '不明な施策'}</div>
       <div class="log-meta">
         <span class="log-author">${esc(l.author)}</span>
         <span class="log-date">${esc(l.date)}</span>
         <span class="badge ${tc[l.type]||'badge-gray'}">${esc(l.type)}</span>
-        <button onclick="deleteLog('${l.id}')" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0"><i class="ti ti-trash"></i></button>
+        <span style="margin-left:auto;display:flex;gap:6px">
+          <button onclick="editLogModal('${l.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0" title="編集"><i class="ti ti-edit"></i></button>
+          <button onclick="deleteLog('${l.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0" title="削除"><i class="ti ti-trash"></i></button>
+        </span>
       </div>
       <div class="log-body">${esc(l.body)}</div>
     </div>`
@@ -337,13 +348,14 @@ function renderLogs() {
   document.getElementById('mainContent').innerHTML = html
 }
 
+// ===== サマリー =====
 function renderStats() {
-  const total = data.施策.length
-  const active = data.施策.filter(s => s.status === '実施中').length
-  const done = data.施策.filter(s => s.status === '完了').length
-  const logs = data.logs.length
-  const catCount = {}; CATS.forEach(c => { catCount[c] = data.施策.filter(s => s.cat === c).length })
-  const ltc = {}; LOG_TYPES.forEach(t => { ltc[t] = data.logs.filter(l => l.type === t).length })
+  const total = 施策List.length
+  const active = 施策List.filter(s => s.status === '実施中').length
+  const done = 施策List.filter(s => s.status === '完了').length
+  const logs = logList.length
+  const catCount = {}; CATS.forEach(c => { catCount[c] = 施策List.filter(s => s.cat === c).length })
+  const ltc = {}; LOG_TYPES.forEach(t => { ltc[t] = logList.filter(l => l.type === t).length })
   document.getElementById('mainContent').innerHTML = `
   <div class="stats">
     <div class="stat-card"><div class="stat-label">施策総数</div><div class="stat-value">${total}</div></div>
@@ -378,6 +390,7 @@ function renderStats() {
   </div>`
 }
 
+// ===== エクスポート =====
 function renderExport() {
   document.getElementById('mainContent').innerHTML = `
   <div class="export-section">
@@ -388,17 +401,10 @@ function renderExport() {
       <div class="export-card"><i class="ti ti-message-2"></i><div class="export-card-title">振り返りログ CSV</div><div class="export-card-desc">全振り返りログをCSV形式で出力</div><button class="btn btn-primary" style="width:100%;justify-content:center" onclick="exportCSV('logs')"><i class="ti ti-download"></i>ダウンロード</button></div>
       <div class="export-card"><i class="ti ti-file-text"></i><div class="export-card-title">全データ テキスト</div><div class="export-card-desc">施策とログをまとめてテキスト出力</div><button class="btn btn-primary" style="width:100%;justify-content:center" onclick="exportText()"><i class="ti ti-download"></i>ダウンロード</button></div>
     </div>
-  </div>
-  <div class="export-section">
-    <div style="font-size:14px;font-weight:500;margin-bottom:4px">バックアップ / 復元</div>
-    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">JSONで丸ごとバックアップ・復元できます。</div>
-    <div style="display:flex;gap:10px">
-      <button class="btn" onclick="exportJSON()"><i class="ti ti-archive"></i>JSONでバックアップ</button>
-      <label class="btn" style="cursor:pointer"><i class="ti ti-upload"></i>JSONから復元<input type="file" accept=".json" style="display:none" onchange="importJSON(this)"></label>
-    </div>
   </div>`
 }
 
+// ===== 設定 =====
 function renderSettings() {
   document.getElementById('addBtn').style.display = 'none'
   document.getElementById('mainContent').innerHTML = `
@@ -412,103 +418,25 @@ function renderSettings() {
       <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="saveSettings()"><i class="ti ti-check"></i>保存する</button>
     </div>
     <div style="background:var(--surface-1);border-radius:12px;padding:20px">
-      <div style="font-size:14px;font-weight:500;margin-bottom:10px">データについて</div>
+      <div style="font-size:14px;font-weight:500;margin-bottom:10px">リアルタイム同期について</div>
       <div style="font-size:13px;color:var(--text-secondary);line-height:1.8">
-        データはこのブラウザのローカルストレージに保存されます。<br>
-        スタッフ間でデータを共有するには、エクスポートのJSONバックアップ機能を使って手動でデータを受け渡してください。<br><br>
-        <strong>共有の手順：</strong><br>
-        1. エクスポート → JSONでバックアップ<br>
-        2. バックアップファイルをスタッフに送る<br>
-        3. スタッフ側でJSONから復元
+        データはSupabaseのクラウドに保存されます。<br>
+        このURLを開いているスタッフ全員がリアルタイムで同じデータを共有できます。<br>
+        誰かがデータを追加・編集すると、自動で全員の画面に反映されます。
       </div>
     </div>
   </div>`
 }
-
 function saveSettings() {
   const name = document.getElementById('inp_user').value.trim()
   if (!name) { showToast('名前を入力してください'); return }
-  userName = name
-  localSave()
+  userName = name; localStorage.setItem('estem_user', userName)
   document.getElementById('userLabel').textContent = 'ユーザー：' + userName
   showToast('設定を保存しました')
 }
 
-function csvEscape(v) { if (v === null || v === undefined) return ''; const s = String(v); if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"'; return s }
-function downloadFile(content, filename, type) {
-  const blob = new Blob(['\uFEFF' + content], {type: type + ';charset=utf-8'})
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click(); URL.revokeObjectURL(a.href)
-  showToast(filename + 'をダウンロードしました')
-}
-function exportCSV(type) {
-  const date = today()
-  if (type === '施策') {
-    const h = ['施策名','分類','ステータス','開始日','終了日','対象','起案者','概要','目的','ログ件数']
-    const rows = data.施策.map(s => [s.name,s.cat,s.status,s.start,s.end,s.target,s.author,s.summary,s.goal,data.logs.filter(l=>l.施策id===s.id).length].map(csvEscape).join(','))
-    downloadFile([h.map(csvEscape).join(','),...rows].join('\n'), `ESTEM_施策一覧_${date}.csv`, 'text/csv')
-  } else {
-    const h = ['施策名','記入者','記入日','種別','内容']
-    const rows = data.logs.map(l => { const s = data.施策.find(x => x.id === l.施策id); return [s?s.name:'',l.author,l.date,l.type,l.body].map(csvEscape).join(',') })
-    downloadFile([h.map(csvEscape).join(','),...rows].join('\n'), `ESTEM_振り返りログ_${date}.csv`, 'text/csv')
-  }
-}
-function exportText() {
-  let txt = `ESTEM 施策データベース エクスポート\n出力日：${today()}\n${'='.repeat(50)}\n\n`
-  data.施策.forEach((s,i) => {
-    txt += `【施策 ${i+1}】${s.name}\n分類：${s.cat}　ステータス：${s.status}\n対象：${s.target}　起案者：${s.author}\n概要：${s.summary}\n目的：${s.goal}\n`
-    const logs = data.logs.filter(l => l.施策id === s.id)
-    if (logs.length) { txt += `\n  振り返りログ（${logs.length}件）\n`; logs.forEach(l => { txt += `  ─ [${l.type}] ${l.author} / ${l.date}\n    ${l.body}\n` }) }
-    txt += '\n' + '-'.repeat(50) + '\n\n'
-  })
-  downloadFile(txt, `ESTEM_全データ_${today()}.txt`, 'text/plain')
-}
-function exportJSON() { downloadFile(JSON.stringify(data, null, 2), `ESTEM_バックアップ_${today()}.json`, 'application/json') }
-function importJSON(input) {
-  const file = input.files[0]; if (!file) return
-  const reader = new FileReader()
-  reader.onload = e => {
-    try {
-      const parsed = JSON.parse(e.target.result)
-      if (!parsed.施策 || !parsed.logs) { alert('形式が正しくありません'); return }
-      if (!confirm(`施策${parsed.施策.length}件、ログ${parsed.logs.length}件を復元します。現在のデータは上書きされます。`)) return
-      data = parsed; localSave(); showView('list'); showToast('データを復元しました')
-    } catch(err) { alert('ファイルの読み込みに失敗しました') }
-  }
-  reader.readAsText(file); input.value = ''
-}
-
-function toggle(id) { expanded[id] = !expanded[id]; render() }
-
-function openLogModal(preselect) {
-  if (!data.施策.length) { showToast('先に施策を登録してください'); showView('list'); return }
-  document.getElementById('modalTitle').textContent = '振り返りログを追加'
-  document.getElementById('modalBody').innerHTML = `
-    <div class="form-group">
-      <label class="form-label">施策名 *</label>
-      <select class="form-input" id="f_施策id">
-        <option value="">-- 施策を選択 --</option>
-        ${data.施策.map(s => `<option value="${s.id}"${preselect===s.id?' selected':''}>${esc(s.name)}（${esc(s.status)}）</option>`).join('')}
-      </select>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">記入者 *</label><input class="form-input" id="f_author" value="${esc(userName)}" placeholder="名前"></div>
-      <div class="form-group"><label class="form-label">記入日</label><input class="form-input" id="f_date" type="date" value="${today()}"></div>
-    </div>
-    <div class="form-group"><label class="form-label">種別</label><select class="form-input" id="f_type">${LOG_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
-    <div class="form-group"><label class="form-label">内容 *</label><textarea class="form-input" id="f_body" style="min-height:90px" placeholder="気づいたことを自由に記入してください"></textarea></div>`
-  document.getElementById('modalFooter').innerHTML = `<button class="btn" onclick="closeModal()">キャンセル</button><button class="btn btn-primary" onclick="saveLogFromTab()">記録する</button>`
-  document.getElementById('modalBg').style.display = 'flex'
-}
-
-function saveLogFromTab() {
-  const 施策id = document.getElementById('f_施策id').value
-  const author = document.getElementById('f_author').value.trim()
-  const body = document.getElementById('f_body').value.trim()
-  if (!施策id) { showToast('施策を選択してください'); return }
-  if (!author || !body) { showToast('記入者と内容を入力してください'); return }
-  data.logs.push({id:uid(), 施策id, type:document.getElementById('f_type').value, author, date:document.getElementById('f_date').value, body})
-  localSave(); closeModal(); showToast('ログを記録しました'); render()
-}
+// ===== モーダル =====
+function closeModal() { document.getElementById('modalBg').style.display = 'none' }
 
 function openModal(type, 施策id) {
   if (type === 'log') { openLogModal(施策id); return }
@@ -532,7 +460,7 @@ function openModal(type, 施策id) {
 }
 
 function editModal(id) {
-  const s = data.施策.find(x => x.id === id); if (!s) return
+  const s = 施策List.find(x => x.id === id); if (!s) return
   document.getElementById('modalTitle').textContent = '施策を編集'
   document.getElementById('modalBody').innerHTML = `
     <div class="form-group"><label class="form-label">施策名 *</label><input class="form-input" id="f_name" value="${esc(s.name)}"></div>
@@ -541,42 +469,107 @@ function editModal(id) {
       <div class="form-group"><label class="form-label">ステータス</label><select class="form-input" id="f_status">${STATUSES.map(st=>`<option${st===s.status?' selected':''}>${st}</option>`).join('')}</select></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">開始日</label><input class="form-input" id="f_start" type="date" value="${s.start||''}"></div>
-      <div class="form-group"><label class="form-label">終了日</label><input class="form-input" id="f_end" type="date" value="${s.end||''}"></div>
+      <div class="form-group"><label class="form-label">開始日</label><input class="form-input" id="f_start" type="date" value="${s.start_date||''}"></div>
+      <div class="form-group"><label class="form-label">終了日</label><input class="form-input" id="f_end" type="date" value="${s.end_date||''}"></div>
     </div>
     <div class="form-group"><label class="form-label">対象</label><input class="form-input" id="f_target" value="${esc(s.target)}"></div>
     <div class="form-group"><label class="form-label">起案者</label><input class="form-input" id="f_author" value="${esc(s.author)}"></div>
     <div class="form-group"><label class="form-label">概要</label><textarea class="form-input" id="f_summary">${esc(s.summary)}</textarea></div>
     <div class="form-group"><label class="form-label">目的</label><textarea class="form-input" id="f_goal">${esc(s.goal)}</textarea></div>`
   document.getElementById('modalFooter').innerHTML = `
-    <button class="btn" style="color:var(--text-danger);border-color:var(--border-danger)" onclick="delete施策('${id}')"><i class="ti ti-trash"></i>削除</button>
+    <button class="btn" style="color:var(--text-danger);border-color:var(--border-danger)" onclick="confirmDelete施策('${id}')"><i class="ti ti-trash"></i>削除</button>
     <div style="flex:1"></div>
     <button class="btn" onclick="closeModal()">キャンセル</button>
     <button class="btn btn-primary" onclick="update施策('${id}')">保存する</button>`
   document.getElementById('modalBg').style.display = 'flex'
 }
 
-function closeModal() { document.getElementById('modalBg').style.display = 'none' }
-
-function save施策() {
-  const name = document.getElementById('f_name').value.trim()
-  if (!name) { alert('施策名を入力してください'); return }
-  data.施策.push({id:uid(), name, cat:document.getElementById('f_cat').value, status:document.getElementById('f_status').value, start:document.getElementById('f_start').value, end:document.getElementById('f_end').value, target:document.getElementById('f_target').value, author:document.getElementById('f_author').value, summary:document.getElementById('f_summary').value, goal:document.getElementById('f_goal').value, created:Date.now()})
-  localSave(); closeModal(); render()
+function openLogModal(preselect) {
+  if (!施策List.length) { showToast('先に施策を登録してください'); showView('list'); return }
+  document.getElementById('modalTitle').textContent = '振り返りログを追加'
+  document.getElementById('modalBody').innerHTML = `
+    <div class="form-group">
+      <label class="form-label">施策名 *</label>
+      <select class="form-input" id="f_施策id">
+        <option value="">-- 施策を選択 --</option>
+        ${施策List.map(s => `<option value="${s.id}"${preselect===s.id?' selected':''}>${esc(s.name)}（${esc(s.status)}）</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">記入者 *</label><input class="form-input" id="f_author" value="${esc(userName)}" placeholder="名前"></div>
+      <div class="form-group"><label class="form-label">記入日</label><input class="form-input" id="f_date" type="date" value="${today()}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">種別</label><select class="form-input" id="f_type">${LOG_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
+    <div class="form-group"><label class="form-label">内容 *</label><textarea class="form-input" id="f_body" style="min-height:90px" placeholder="気づいたことを自由に記入してください"></textarea></div>`
+  document.getElementById('modalFooter').innerHTML = `<button class="btn" onclick="closeModal()">キャンセル</button><button class="btn btn-primary" onclick="saveLogFromTab()">記録する</button>`
+  document.getElementById('modalBg').style.display = 'flex'
 }
 
-function update施策(id) {
+function editLogModal(id) {
+  const l = logList.find(x => x.id === id); if (!l) return
+  document.getElementById('modalTitle').textContent = '振り返りログを編集'
+  document.getElementById('modalBody').innerHTML = `
+    <div class="form-group">
+      <label class="form-label">施策名 *</label>
+      <select class="form-input" id="f_施策id">
+        <option value="">-- 施策を選択 --</option>
+        ${施策List.map(s => `<option value="${s.id}"${s.id===l['施策id']?' selected':''}>${esc(s.name)}（${esc(s.status)}）</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">記入者 *</label><input class="form-input" id="f_author" value="${esc(l.author)}" placeholder="名前"></div>
+      <div class="form-group"><label class="form-label">記入日</label><input class="form-input" id="f_date" type="date" value="${esc(l.date)}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">種別</label><select class="form-input" id="f_type">${LOG_TYPES.map(t=>`<option${t===l.type?' selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="form-group"><label class="form-label">内容 *</label><textarea class="form-input" id="f_body" style="min-height:90px">${esc(l.body)}</textarea></div>`
+  document.getElementById('modalFooter').innerHTML = `
+    <button class="btn" style="color:var(--text-danger);border-color:var(--border-danger)" onclick="deleteLog('${id}');closeModal()"><i class="ti ti-trash"></i>削除</button>
+    <div style="flex:1"></div>
+    <button class="btn" onclick="closeModal()">キャンセル</button>
+    <button class="btn btn-primary" onclick="updateLog('${id}')">保存する</button>`
+  document.getElementById('modalBg').style.display = 'flex'
+}
+
+// ===== CRUD操作 =====
+async function save施策() {
   const name = document.getElementById('f_name').value.trim()
-  if (!name) { alert('施策名を入力してください'); return }
-  const s = data.施策.find(x => x.id === id); if (!s) return
-  Object.assign(s, {name, cat:document.getElementById('f_cat').value, status:document.getElementById('f_status').value, start:document.getElementById('f_start').value, end:document.getElementById('f_end').value, target:document.getElementById('f_target').value, author:document.getElementById('f_author').value, summary:document.getElementById('f_summary').value, goal:document.getElementById('f_goal').value})
-  localSave(); closeModal(); render()
+  if (!name) { showToast('施策名を入力してください','err'); return }
+  const { error } = await sb.from('施策').insert({
+    id: uid(), name,
+    cat: document.getElementById('f_cat').value,
+    status: document.getElementById('f_status').value,
+    start_date: document.getElementById('f_start').value,
+    end_date: document.getElementById('f_end').value,
+    target: document.getElementById('f_target').value,
+    author: document.getElementById('f_author').value,
+    summary: document.getElementById('f_summary').value,
+    goal: document.getElementById('f_goal').value,
+    created_at: Date.now()
+  })
+  if (error) { showToast('保存に失敗しました','err'); return }
+  closeModal(); showToast('施策を追加しました')
+}
+
+async function update施策(id) {
+  const name = document.getElementById('f_name').value.trim()
+  if (!name) { showToast('施策名を入力してください','err'); return }
+  const { error } = await sb.from('施策').update({
+    name, cat: document.getElementById('f_cat').value,
+    status: document.getElementById('f_status').value,
+    start_date: document.getElementById('f_start').value,
+    end_date: document.getElementById('f_end').value,
+    target: document.getElementById('f_target').value,
+    author: document.getElementById('f_author').value,
+    summary: document.getElementById('f_summary').value,
+    goal: document.getElementById('f_goal').value
+  }).eq('id', id)
+  if (error) { showToast('更新に失敗しました','err'); return }
+  closeModal(); showToast('施策を更新しました')
 }
 
 function confirmDelete施策(id) {
-  const s = data.施策.find(x => x.id === id)
-  if (!s) return
-  const logCount = data.logs.filter(l => l.施策id === id).length
+  const s = 施策List.find(x => x.id === id); if (!s) return
+  const logCount = logList.filter(l => l['施策id'] === id).length
   const msg = logCount > 0
     ? `「${s.name}」を削除しますか？\n\nこの施策に紐づく振り返りログ ${logCount} 件も一緒に削除されます。\nこの操作は元に戻せません。`
     : `「${s.name}」を削除しますか？\n\nこの操作は元に戻せません。`
@@ -584,35 +577,83 @@ function confirmDelete施策(id) {
   delete施策(id)
 }
 
-function delete施策(id) {
-  if (!confirm('この施策と紐づくログを削除しますか？')) return
-  data.施策 = data.施策.filter(x => x.id !== id)
-  data.logs = data.logs.filter(l => l.施策id !== id)
-  delete expanded[id]; localSave(); closeModal(); render()
+async function delete施策(id) {
+  const { error } = await sb.from('施策').delete().eq('id', id)
+  if (error) { showToast('削除に失敗しました','err'); return }
+  closeModal(); showToast('施策を削除しました')
 }
 
-function saveLog(施策id) {
+async function saveLogFromTab() {
+  const 施策id = document.getElementById('f_施策id').value
   const author = document.getElementById('f_author').value.trim()
   const body = document.getElementById('f_body').value.trim()
-  if (!author || !body) { alert('記入者と内容を入力してください'); return }
-  data.logs.push({id:uid(), 施策id, type:document.getElementById('f_type').value, author, date:document.getElementById('f_date').value, body})
-  localSave(); closeModal(); expanded[施策id] = true; render()
+  if (!施策id) { showToast('施策を選択してください','err'); return }
+  if (!author || !body) { showToast('記入者と内容を入力してください','err'); return }
+  const { error } = await sb.from('logs').insert({
+    id: uid(), '施策id': 施策id,
+    type: document.getElementById('f_type').value,
+    author, date: document.getElementById('f_date').value, body
+  })
+  if (error) { showToast('保存に失敗しました','err'); return }
+  closeModal(); showToast('ログを記録しました')
 }
 
-function deleteLog(id) {
+async function updateLog(id) {
+  const 施策id = document.getElementById('f_施策id').value
+  const author = document.getElementById('f_author').value.trim()
+  const body = document.getElementById('f_body').value.trim()
+  if (!施策id) { showToast('施策を選択してください','err'); return }
+  if (!author || !body) { showToast('記入者と内容を入力してください','err'); return }
+  const { error } = await sb.from('logs').update({
+    '施策id': 施策id, type: document.getElementById('f_type').value,
+    author, date: document.getElementById('f_date').value, body
+  }).eq('id', id)
+  if (error) { showToast('更新に失敗しました','err'); return }
+  closeModal(); showToast('ログを更新しました')
+}
+
+async function deleteLog(id) {
   if (!confirm('このログを削除しますか？')) return
-  data.logs = data.logs.filter(l => l.id !== id); localSave(); render()
+  const { error } = await sb.from('logs').delete().eq('id', id)
+  if (error) { showToast('削除に失敗しました','err'); return }
+  showToast('ログを削除しました')
 }
 
-function showToast(msg) {
-  const t = document.getElementById('toast'); document.getElementById('toastMsg').textContent = msg
-  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500)
+// ===== エクスポート =====
+function csvEsc(v) { if (!v) return ''; const s = String(v); if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g,'""') + '"'; return s }
+function dlFile(content, name, type) {
+  const blob = new Blob(['\uFEFF'+content], {type: type+';charset=utf-8'})
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href)
+  showToast(name + 'をダウンロードしました')
+}
+function exportCSV(type) {
+  const date = today()
+  if (type === '施策') {
+    const h = ['施策名','分類','ステータス','開始日','終了日','対象','起案者','概要','目的','ログ件数']
+    const rows = 施策List.map(s => [s.name,s.cat,s.status,s.start_date,s.end_date,s.target,s.author,s.summary,s.goal,logList.filter(l=>l['施策id']===s.id).length].map(csvEsc).join(','))
+    dlFile([h.map(csvEsc).join(','),...rows].join('\n'), `ESTEM_施策一覧_${date}.csv`, 'text/csv')
+  } else {
+    const h = ['施策名','記入者','記入日','種別','内容']
+    const rows = logList.map(l => { const s = 施策List.find(x => x.id === l['施策id']); return [s?s.name:'',l.author,l.date,l.type,l.body].map(csvEsc).join(',') })
+    dlFile([h.map(csvEsc).join(','),...rows].join('\n'), `ESTEM_振り返りログ_${date}.csv`, 'text/csv')
+  }
+}
+function exportText() {
+  let txt = `ESTEM 施策データベース エクスポート\n出力日：${today()}\n${'='.repeat(50)}\n\n`
+  施策List.forEach((s,i) => {
+    txt += `【施策 ${i+1}】${s.name}\n分類：${s.cat}　ステータス：${s.status}\n対象：${s.target}　起案者：${s.author}\n概要：${s.summary}\n目的：${s.goal}\n`
+    const logs = logList.filter(l => l['施策id'] === s.id)
+    if (logs.length) { txt += `\n  振り返りログ（${logs.length}件）\n`; logs.forEach(l => { txt += `  ─ [${l.type}] ${l.author} / ${l.date}\n    ${l.body}\n` }) }
+    txt += '\n' + '-'.repeat(50) + '\n\n'
+  })
+  dlFile(txt, `ESTEM_全データ_${today()}.txt`, 'text/plain')
 }
 
-localLoad()
-document.getElementById('userLabel').textContent = userName ? 'ユーザー：' + userName : 'ユーザー未設定'
+// ===== 初期化 =====
+if (userName) document.getElementById('userLabel').textContent = 'ユーザー：' + userName
 updateAddBtn()
-render()
+subscribeRealtime()
+loadAll()
 </script>
 </body>
 </html>
