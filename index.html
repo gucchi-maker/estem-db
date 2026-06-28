@@ -62,11 +62,11 @@
     .btn-primary:hover { background: var(--fill-accent-hover); }
     .btn-sm { padding: 5px 9px; font-size: 12px; }
     .content { flex: 1; overflow-y: auto; padding: 14px; }
-    .list-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 70px; gap: 10px; padding: 6px 10px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; border-bottom: 0.5px solid var(--border); margin-bottom: 4px; }
+    .list-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 70px 36px; gap: 10px; padding: 6px 10px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; border-bottom: 0.5px solid var(--border); margin-bottom: 4px; }
     .card { background: var(--surface-2); border: 0.5px solid var(--border); border-radius: var(--radius); margin-bottom: 5px; overflow: hidden; cursor: pointer; }
     .card:hover { border-color: var(--border-strong); }
     .card.expanded { border-color: var(--border-accent); }
-    .card-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 70px; gap: 10px; padding: 10px; align-items: center; }
+    .card-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 70px 36px; gap: 10px; padding: 10px; align-items: center; }
     .card-name { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
     .card-name i { font-size: 12px; color: var(--text-muted); transition: transform .15s; }
     .expanded .card-name i { transform: rotate(90deg); }
@@ -256,7 +256,7 @@ function renderList() {
     if (ct && s.cat !== ct) return false
     return true
   })
-  let html = `<div class="list-header"><div>施策名</div><div>分類</div><div>ステータス</div><div>実施期間</div><div style="text-align:center">ログ</div></div>`
+  let html = `<div class="list-header"><div>施策名</div><div>分類</div><div>ステータス</div><div>実施期間</div><div style="text-align:center">ログ</div><div></div></div>`
   if (!list.length) html += '<div class="empty"><i class="ti ti-inbox"></i><p>施策が見つかりません</p></div>'
   list.forEach(s => {
     const logs = data.logs.filter(l => l.施策id === s.id)
@@ -268,6 +268,7 @@ function renderList() {
         <div class="card-col"><span class="badge ${STATUS_BADGE[s.status]||'badge-gray'}">${esc(s.status)}</span></div>
         <div class="card-col" style="font-size:11px">${esc(s.start)}${s.end?' → '+esc(s.end):' →'}</div>
         <div class="card-col" style="text-align:center">${logs.length}件</div>
+        <div class="card-col" style="text-align:center"><button onclick="event.stopPropagation();confirmDelete施策('${s.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:15px;padding:2px;border-radius:4px;display:flex;align-items:center;justify-content:center" title="削除"><i class="ti ti-trash"></i></button></div>
       </div>`
     if (isExp) {
       html += `<div style="padding:0 10px 10px;border-top:0.5px solid var(--border);padding-top:10px">
@@ -570,6 +571,17 @@ function update施策(id) {
   const s = data.施策.find(x => x.id === id); if (!s) return
   Object.assign(s, {name, cat:document.getElementById('f_cat').value, status:document.getElementById('f_status').value, start:document.getElementById('f_start').value, end:document.getElementById('f_end').value, target:document.getElementById('f_target').value, author:document.getElementById('f_author').value, summary:document.getElementById('f_summary').value, goal:document.getElementById('f_goal').value})
   localSave(); closeModal(); render()
+}
+
+function confirmDelete施策(id) {
+  const s = data.施策.find(x => x.id === id)
+  if (!s) return
+  const logCount = data.logs.filter(l => l.施策id === id).length
+  const msg = logCount > 0
+    ? `「${s.name}」を削除しますか？\n\nこの施策に紐づく振り返りログ ${logCount} 件も一緒に削除されます。\nこの操作は元に戻せません。`
+    : `「${s.name}」を削除しますか？\n\nこの操作は元に戻せません。`
+  if (!confirm(msg)) return
+  delete施策(id)
 }
 
 function delete施策(id) {
